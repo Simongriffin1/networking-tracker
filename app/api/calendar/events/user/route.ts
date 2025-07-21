@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUserEvent, updateUserEvent, deleteUserEvent } from '@/lib/calendarAPI'
 
+// Force dynamic rendering to prevent static generation
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -49,7 +52,24 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    // Handle build-time data collection
+    if (!request || !request.url) {
+      return NextResponse.json({ message: 'No operation performed' })
+    }
+
+    // Safely access URL parameters
+    let searchParams: URLSearchParams
+    try {
+      const url = new URL(request.url)
+      searchParams = url.searchParams
+    } catch (error) {
+      console.error('Invalid request URL:', error)
+      return NextResponse.json(
+        { error: 'Invalid request URL' },
+        { status: 400 }
+      )
+    }
+
     const id = searchParams.get('id')
     
     if (!id) {

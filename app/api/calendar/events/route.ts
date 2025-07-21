@@ -1,19 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCalendarEvents } from '@/lib/calendarAPI'
 
+// Force dynamic rendering to prevent static generation
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    // Handle build-time data collection
-    if (process.env.NODE_ENV === 'production' && !request?.url) {
-      return NextResponse.json({ events: [] })
+    // Handle build-time data collection - return empty array to prevent static generation
+    if (!request || !request.url || process.env.NODE_ENV === 'production' && typeof request.url === 'undefined') {
+      return NextResponse.json([])
     }
 
-    // Handle cases where request is not available
-    if (!request || !request.url) {
-      return NextResponse.json({ events: [] })
+    // Safely access URL parameters
+    let searchParams: URLSearchParams
+    try {
+      const url = new URL(request.url)
+      searchParams = url.searchParams
+    } catch (error) {
+      console.error('Invalid request URL:', error)
+      return NextResponse.json(
+        { error: 'Invalid request URL' },
+        { status: 400 }
+      )
     }
 
-    const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
