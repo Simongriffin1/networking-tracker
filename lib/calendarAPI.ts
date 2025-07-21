@@ -28,6 +28,12 @@ export interface CalendarEvent {
 
 export async function getCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
   try {
+    // Validate input parameters
+    if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      console.error('Invalid date parameters provided to getCalendarEvents')
+      return []
+    }
+
     // Fetch user events
     const userEvents = await prisma.userEvent.findMany({
       where: {

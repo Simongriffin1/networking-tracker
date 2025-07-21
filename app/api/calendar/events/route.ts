@@ -14,7 +14,18 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const events = await getCalendarEvents(new Date(startDate), new Date(endDate))
+    // Validate date parameters
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return NextResponse.json(
+        { error: 'Invalid date format' },
+        { status: 400 }
+      )
+    }
+
+    const events = await getCalendarEvents(start, end)
     return NextResponse.json(events)
   } catch (error) {
     console.error('Error fetching calendar events:', error)
