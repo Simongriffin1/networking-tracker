@@ -25,6 +25,7 @@ const nextConfig = {
       ...config.optimization,
       splitChunks: {
         ...config.optimization.splitChunks,
+        chunks: 'all',
         cacheGroups: {
           ...config.optimization.splitChunks.cacheGroups,
           vendor: {
@@ -32,9 +33,23 @@ const nextConfig = {
             name: 'vendors',
             chunks: 'all',
             enforce: true,
+            priority: 10,
+          },
+          common: {
+            name: 'common',
+            minChunks: 2,
+            chunks: 'all',
+            enforce: true,
+            priority: 5,
           },
         },
       },
+    }
+    
+    // Improve module resolution
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname, './'),
     }
     
     return config
