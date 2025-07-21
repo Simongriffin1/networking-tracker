@@ -36,7 +36,7 @@ export function InteractiveCalendar() {
   // Load events when component mounts or date changes
   useEffect(() => {
     loadEvents()
-  }, [loadEvents])
+  }, [currentDate])
 
   const handleEventClick = (info: any) => {
     const event = events.find(e => e.id === info.event.id)
