@@ -3,6 +3,11 @@ import { getCalendarEvents } from '@/lib/calendarAPI'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if we're in a build context or if request is not available
+    if (!request || !request.url) {
+      return NextResponse.json({ events: [] })
+    }
+
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -17,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Validate date parameters
     const start = new Date(startDate)
     const end = new Date(endDate)
-    
+
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return NextResponse.json(
         { error: 'Invalid date format' },
