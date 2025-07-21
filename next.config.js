@@ -18,6 +18,9 @@ const nextConfig = {
           config: [__filename],
         },
       }
+    } else {
+      // Disable caching in development to avoid vendor chunk issues
+      config.cache = false
     }
     
     // Fix vendor chunk resolution issues
@@ -26,6 +29,8 @@ const nextConfig = {
       splitChunks: {
         ...config.optimization.splitChunks,
         chunks: 'all',
+        maxInitialRequests: 25,
+        minSize: 20000,
         cacheGroups: {
           ...config.optimization.splitChunks.cacheGroups,
           vendor: {
@@ -34,6 +39,7 @@ const nextConfig = {
             chunks: 'all',
             enforce: true,
             priority: 10,
+            reuseExistingChunk: true,
           },
           common: {
             name: 'common',
@@ -41,6 +47,22 @@ const nextConfig = {
             chunks: 'all',
             enforce: true,
             priority: 5,
+            reuseExistingChunk: true,
+          },
+          // Specific vendor chunks for problematic modules
+          radix: {
+            test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+            name: 'radix',
+            chunks: 'all',
+            enforce: true,
+            priority: 15,
+          },
+          lucide: {
+            test: /[\\/]node_modules[\\/]lucide-react[\\/]/,
+            name: 'lucide',
+            chunks: 'all',
+            enforce: true,
+            priority: 15,
           },
         },
       },
@@ -50,6 +72,12 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': require('path').resolve(__dirname, './'),
+    }
+    
+    // Fix for vendor chunk resolution in development
+    if (dev) {
+      config.resolve.symlinks = false
+      config.resolve.cacheWithContext = false
     }
     
     return config
