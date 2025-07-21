@@ -3,7 +3,12 @@ import { getCalendarEvents } from '@/lib/calendarAPI'
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if we're in a build context or if request is not available
+    // Handle build-time data collection
+    if (process.env.NODE_ENV === 'production' && !request?.url) {
+      return NextResponse.json({ events: [] })
+    }
+
+    // Handle cases where request is not available
     if (!request || !request.url) {
       return NextResponse.json({ events: [] })
     }

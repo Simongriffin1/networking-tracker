@@ -40,6 +40,12 @@ export async function getCalendarEvents(startDate: Date, endDate: Date): Promise
       return []
     }
 
+    // Check if we're in a build context
+    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+      // During build time, return empty array to prevent data collection errors
+      return []
+    }
+
     // Fetch user events
     const userEvents = await prisma.userEvent.findMany({
       where: {
