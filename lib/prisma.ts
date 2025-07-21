@@ -13,15 +13,4 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   },
 })
 
-// Add connection validation for Vercel deployment
-if (process.env.NODE_ENV === 'production') {
-  prisma.$connect()
-    .then(() => {
-      console.log('🔥 PRISMA: Successfully connected to database')
-    })
-    .catch((error: unknown) => {
-      console.error('🔥 PRISMA ERROR: Failed to connect to database:', error)
-    })
-}
-
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma 

@@ -14,30 +14,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([])
     }
 
-    // Safely access URL parameters - works in both Node and Edge environments
-    let startDate: string | null = null
-    let endDate: string | null = null
+    // Safely access URL parameters using NextRequest's built-in searchParams
+    const startDate = request.nextUrl?.searchParams.get('startDate') || null
+    const endDate = request.nextUrl?.searchParams.get('endDate') || null
     
-    try {
-      // Try NextRequest's built-in searchParams first
-      if (request.nextUrl?.searchParams) {
-        startDate = request.nextUrl.searchParams.get('startDate')
-        endDate = request.nextUrl.searchParams.get('endDate')
-      } else if (request.url && typeof request.url === 'string') {
-        // Fallback to URL construction if nextUrl is not available
-        const url = new URL(request.url)
-        startDate = url.searchParams.get('startDate')
-        endDate = url.searchParams.get('endDate')
-      }
-      
-      console.log('🔥 API ROUTE: Extracted params:', { startDate, endDate })
-    } catch (error) {
-      console.error('🔥 API ROUTE ERROR: Failed to extract URL parameters:', error)
-      return NextResponse.json(
-        { error: 'Invalid request parameters' },
-        { status: 400 }
-      )
-    }
+    console.log('🔥 API ROUTE: Extracted params:', { startDate, endDate })
 
     if (!startDate || !endDate) {
       console.log('🔥 API ROUTE: Missing required parameters')

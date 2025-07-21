@@ -66,27 +66,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ message: 'No operation performed' })
     }
 
-    // Safely access URL parameters - works in both Node and Edge environments
-    let id: string | null = null
+    // Safely access URL parameters using NextRequest's built-in searchParams
+    const id = request.nextUrl?.searchParams.get('id') || null
     
-    try {
-      // Try NextRequest's built-in searchParams first
-      if (request.nextUrl?.searchParams) {
-        id = request.nextUrl.searchParams.get('id')
-      } else if (request.url && typeof request.url === 'string') {
-        // Fallback to URL construction if nextUrl is not available
-        const url = new URL(request.url)
-        id = url.searchParams.get('id')
-      }
-      
-      console.log('🔥 API ROUTE: Extracted ID:', id)
-    } catch (error) {
-      console.error('🔥 API ROUTE ERROR: Failed to extract ID parameter:', error)
-      return NextResponse.json(
-        { error: 'Invalid request parameters' },
-        { status: 400 }
-      )
-    }
+    console.log('🔥 API ROUTE: Extracted ID:', id)
     
     if (!id) {
       console.log('🔥 API ROUTE: Missing event ID')
