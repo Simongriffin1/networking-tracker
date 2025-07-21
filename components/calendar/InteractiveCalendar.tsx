@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -25,18 +25,18 @@ export function InteractiveCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const calendarRef = useRef<FullCalendar>(null)
 
-  // Load events when component mounts or date changes
-  useEffect(() => {
-    loadEvents()
-  }, [currentDate])
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
     const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
     
     const fetchedEvents = await getCalendarEvents(startDate, endDate)
     setEvents(fetchedEvents)
-  }
+  }, [currentDate])
+
+  // Load events when component mounts or date changes
+  useEffect(() => {
+    loadEvents()
+  }, [loadEvents])
 
   const handleEventClick = (info: any) => {
     const event = events.find(e => e.id === info.event.id)
@@ -241,7 +241,7 @@ export function InteractiveCalendar() {
         <Card>
           <CardContent className="text-center py-12">
             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">You're all caught up today!</h3>
+            <h3 className="text-lg font-semibold mb-2">You&apos;re all caught up today!</h3>
             <p className="text-muted-foreground mb-4">
               No events scheduled. Add a meeting or check your suggested follow-ups.
             </p>

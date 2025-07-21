@@ -294,3 +294,70 @@ Once deployed, you'll have:
 - ✅ **Professional networking tool** that grows with you
 
 **Start with Supabase + Vercel for the easiest setup!** 🚀 
+
+---
+
+## **Build Error Summary**
+
+1. **Warning:**  
+   ```
+   React Hook useEffect has a missing dependency: 'loadEvents'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+   ```
+   - This is a warning, not a build blocker.
+
+2. **Error:**  
+   ```
+   244:59  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+   ```
+   - This is a **hard error** due to an unescaped `'` (apostrophe) in your JSX.
+
+---
+
+## **How to Fix**
+
+### 1. **Fix the JSX Apostrophe Error**
+
+You have a string in your JSX like:
+```jsx
+You're all caught up today!
+```
+JSX requires you to escape `'` as `&apos;` or use double quotes for the string.
+
+**Change this:**
+```jsx
+<h3 className="text-lg font-semibold mb-2">You're all caught up today!</h3>
+```
+**To this:**
+```jsx
+<h3 className="text-lg font-semibold mb-2">You&apos;re all caught up today!</h3>
+```
+Or:
+```jsx
+<h3 className="text-lg font-semibold mb-2">You&#39;re all caught up today!</h3>
+```
+
+---
+
+### 2. **(Optional) Fix the useEffect Dependency Warning**
+
+In `components/calendar/InteractiveCalendar.tsx`, update your `useEffect`:
+```tsx
+useEffect(() => {
+  loadEvents()
+}, [currentDate, loadEvents])
+```
+Or, if `loadEvents` is not memoized, move it inside the effect or ignore the warning for now (it won't block the build).
+
+---
+
+## **What to Do Next**
+
+1. **Fix the JSX apostrophe error** in `components/calendar/InteractiveCalendar.tsx` (line 244 or wherever you see "You're all caught up today!").
+2. **Commit and push your changes** to GitHub.
+3. **Redeploy on Vercel**.
+
+---
+
+### **This will fix your build!**
+
+If you want, I can show you the exact code edit for the apostrophe fix. Would you like that? 
