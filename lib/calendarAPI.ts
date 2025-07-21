@@ -28,21 +28,17 @@ export interface CalendarEvent {
 
 export async function getCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
   try {
+    console.log('🔥 CALENDAR API: getCalendarEvents called with dates:', { startDate, endDate })
+    
     // Validate input parameters
     if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      console.error('Invalid date parameters provided to getCalendarEvents')
+      console.error('🔥 CALENDAR API: Invalid date parameters provided to getCalendarEvents')
       return []
     }
 
     // Check if database is available
     if (!process.env.DATABASE_URL) {
-      console.warn('DATABASE_URL not found, returning empty events array')
-      return []
-    }
-
-    // Check if we're in a build context
-    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
-      // During build time, return empty array to prevent data collection errors
+      console.warn('🔥 CALENDAR API: DATABASE_URL not found, returning empty events array')
       return []
     }
 
@@ -111,9 +107,11 @@ export async function getCalendarEvents(startDate: Date, endDate: Date): Promise
       borderColor: event.importanceScore >= 75 ? '#dc2626' : '#d97706',
     }))
 
-    return [...transformedUserEvents, ...transformedSuggestedEvents]
+    const allEvents = [...transformedUserEvents, ...transformedSuggestedEvents]
+    console.log('🔥 CALENDAR API: Successfully fetched events:', allEvents.length)
+    return allEvents
   } catch (error) {
-    console.error('Error fetching calendar events:', error)
+    console.error('🔥 CALENDAR API ERROR: Failed to fetch calendar events:', error)
     return []
   }
 }

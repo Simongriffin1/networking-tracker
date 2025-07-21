@@ -6,28 +6,34 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    // Handle build-time data collection - return empty array to prevent static generation
-    if (!request || !request.url || process.env.NODE_ENV === 'production' && typeof request.url === 'undefined') {
+    console.log('🔥 API ROUTE: /api/calendar/events - Starting request')
+    
+    // Handle cases where request is not available (build-time)
+    if (!request) {
+      console.log('🔥 API ROUTE: No request object available')
       return NextResponse.json([])
     }
 
-    // Safely access URL parameters
-    let searchParams: URLSearchParams
+    // Safely access URL parameters without direct URL construction
+    let startDate: string | null = null
+    let endDate: string | null = null
+    
     try {
-      const url = new URL(request.url)
-      searchParams = url.searchParams
+      // Use NextRequest's built-in searchParams instead of URL construction
+      startDate = request.nextUrl?.searchParams.get('startDate') || null
+      endDate = request.nextUrl?.searchParams.get('endDate') || null
+      
+      console.log('🔥 API ROUTE: Extracted params:', { startDate, endDate })
     } catch (error) {
-      console.error('Invalid request URL:', error)
+      console.error('🔥 API ROUTE ERROR: Failed to extract URL parameters:', error)
       return NextResponse.json(
-        { error: 'Invalid request URL' },
+        { error: 'Invalid request parameters' },
         { status: 400 }
       )
     }
 
-    const startDate = searchParams.get('startDate')
-    const endDate = searchParams.get('endDate')
-
     if (!startDate || !endDate) {
+      console.log('🔥 API ROUTE: Missing required parameters')
       return NextResponse.json(
         { error: 'startDate and endDate are required' },
         { status: 400 }
@@ -39,16 +45,20 @@ export async function GET(request: NextRequest) {
     const end = new Date(endDate)
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.log('🔥 API ROUTE: Invalid date format provided')
       return NextResponse.json(
         { error: 'Invalid date format' },
         { status: 400 }
       )
     }
 
+    console.log('🔥 API ROUTE: Calling getCalendarEvents with dates:', { start, end })
     const events = await getCalendarEvents(start, end)
+    console.log('🔥 API ROUTE: Successfully fetched events:', events.length)
+    
     return NextResponse.json(events)
   } catch (error) {
-    console.error('Error fetching calendar events:', error)
+    console.error('🔥 API ROUTE ERROR: /api/calendar/events failed:', error)
     return NextResponse.json(
       { error: 'Failed to fetch calendar events' },
       { status: 500 }
