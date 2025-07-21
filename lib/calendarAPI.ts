@@ -40,12 +40,6 @@ export async function getCalendarEvents(startDate: Date, endDate: Date): Promise
       return []
     }
 
-    // Check if Prisma is available (for development builds)
-    if (typeof prisma === 'undefined') {
-      console.warn('Prisma client not available, returning empty events array')
-      return []
-    }
-
     // Fetch user events
     const userEvents = await prisma.userEvent.findMany({
       where: {
