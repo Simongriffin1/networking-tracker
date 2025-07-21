@@ -34,6 +34,12 @@ export async function getCalendarEvents(startDate: Date, endDate: Date): Promise
       return []
     }
 
+    // Check if database is available
+    if (!process.env.DATABASE_URL) {
+      console.warn('DATABASE_URL not found, returning empty events array')
+      return []
+    }
+
     // Fetch user events
     const userEvents = await prisma.userEvent.findMany({
       where: {
