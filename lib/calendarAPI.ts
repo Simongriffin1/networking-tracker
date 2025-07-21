@@ -1,5 +1,16 @@
 import { prisma } from './prisma'
 
+// Type definitions for better type safety
+interface ContactForFollowUp {
+  id: string
+  fullName: string
+  meetingCadence: string | null
+  nextFollowUp: Date | null
+  tags: string[]
+  relationship: string | null
+  lastContacted: Date | null
+}
+
 export interface CalendarEvent {
   id: string
   title: string
@@ -54,7 +65,7 @@ export async function getCalendarEvents(startDate: Date, endDate: Date): Promise
     })
 
     // Transform user events
-    const transformedUserEvents: CalendarEvent[] = userEvents.map((event) => ({
+    const transformedUserEvents: CalendarEvent[] = userEvents.map((event: any) => ({
       id: `user_${event.id}`,
       title: event.title,
       date: event.date,
@@ -68,7 +79,7 @@ export async function getCalendarEvents(startDate: Date, endDate: Date): Promise
     }))
 
     // Transform suggested follow-ups
-    const transformedSuggestedEvents: CalendarEvent[] = suggestedFollowUps.map((event) => ({
+    const transformedSuggestedEvents: CalendarEvent[] = suggestedFollowUps.map((event: any) => ({
       id: `suggested_${event.id}`,
       title: `Follow up with ${event.contactName}`,
       date: event.date,
@@ -220,6 +231,7 @@ export async function generateSuggestedFollowUps(): Promise<void> {
         nextFollowUp: true,
         tags: true,
         relationship: true,
+        lastContacted: true,
       },
     })
 
@@ -246,7 +258,7 @@ export async function generateSuggestedFollowUps(): Promise<void> {
   }
 }
 
-function calculateImportanceScore(contact: any): number {
+function calculateImportanceScore(contact: ContactForFollowUp): number {
   let score = 50 // Base score
 
   // Adjust based on relationship
@@ -265,7 +277,7 @@ function calculateImportanceScore(contact: any): number {
   return Math.min(score, 100)
 }
 
-function calculateSuggestedDate(contact: any): Date | null {
+function calculateSuggestedDate(contact: ContactForFollowUp): Date | null {
   const now = new Date()
   
   // If they have a nextFollowUp date, use that
@@ -284,7 +296,7 @@ function calculateSuggestedDate(contact: any): Date | null {
   return new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
 }
 
-function generateMessagePreview(contact: any): string {
+function generateMessagePreview(contact: ContactForFollowUp): string {
   const templates = [
     `Check in with ${contact.fullName} about their latest projects`,
     `Follow up on our previous conversation with ${contact.fullName}`,
