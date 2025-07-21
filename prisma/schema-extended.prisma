@@ -1,0 +1,217 @@
+// Extended CRM Schema - Shows how to scale the networking tracker
+// This demonstrates the full CRM architecture
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== CORE MODELS (Current) =====
+model Contact {
+  id              String    @id @default(uuid())
+  fullName        String
+  preferredName   String?
+  email           String?
+  phone           String?
+  linkedInUrl     String?
+  twitterHandle   String?
+  company         String?
+  title           String?
+  location        String?
+  relationship    String?
+  contactSource   String?
+  tags            String[]
+  personalNotes   String?
+  professionalNotes String?
+  meetingCadence  String?
+  lastContacted   DateTime?
+  nextFollowUp    DateTime?
+  birthday        DateTime?
+  favoriteTopics  String[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  interactions    Interaction[]
+  deals          Deal[]
+  tasks          Task[]
+  companyId      String?
+  company        Company?   @relation(fields: [companyId], references: [id])
+  assignedTo     String?
+  user           User?      @relation(fields: [assignedTo], references: [id])
+}
+
+model Interaction {
+  id            String   @id @default(uuid())
+  contact       Contact  @relation(fields: [contactId], references: [id])
+  contactId     String
+  type          String
+  date          DateTime
+  summary       String
+  fullNotes     String?
+  nextSteps     String?
+  location      String?
+  sentiment     String?
+  sharedBy      String?
+  createdAt     DateTime @default(now())
+  
+  // CRM Extensions
+  dealId        String?
+  deal          Deal?    @relation(fields: [dealId], references: [id])
+  tasks         Task[]
+}
+
+// ===== CRM EXTENSION MODELS =====
+
+model Company {
+  id            String   @id @default(uuid())
+  name          String
+  website       String?
+  industry      String?
+  size          String?  // "1-10", "11-50", "51-200", "201-500", "500+"
+  location      String?
+  description   String?
+  linkedInUrl   String?
+  tags          String[]
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  contacts      Contact[]
+  deals         Deal[]
+  assignedTo    String?
+  user          User?    @relation(fields: [assignedTo], references: [id])
+}
+
+model Deal {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  value         Decimal?
+  currency      String   @default("USD")
+  stage         String   // "Prospecting", "Qualification", "Proposal", "Negotiation", "Closed Won", "Closed Lost"
+  probability   Int      @default(0) // 0-100
+  expectedClose DateTime?
+  actualClose   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  contact       Contact  @relation(fields: [contactId], references: [id])
+  contactId     String
+  company       Company? @relation(fields: [companyId], references: [id])
+  companyId     String?
+  interactions  Interaction[]
+  tasks         Task[]
+  assignedTo    String?
+  user          User?    @relation(fields: [assignedTo], references: [id])
+}
+
+model Task {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  dueDate       DateTime?
+  completed     Boolean  @default(false)
+  priority      String   @default("Medium") // "Low", "Medium", "High", "Urgent"
+  type          String   // "Follow-up", "Meeting", "Call", "Email", "Proposal", "Other"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  contact       Contact? @relation(fields: [contactId], references: [id])
+  contactId     String?
+  deal          Deal?    @relation(fields: [dealId], references: [id])
+  dealId        String?
+  interaction   Interaction? @relation(fields: [interactionId], references: [id])
+  interactionId String?
+  assignedTo    String?
+  user          User?    @relation(fields: [assignedTo], references: [id])
+}
+
+// ===== USER MANAGEMENT =====
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  role          String   @default("user") // "admin", "manager", "user"
+  avatar        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  contacts      Contact[]
+  companies     Company[]
+  deals         Deal[]
+  tasks         Task[]
+}
+
+// ===== ANALYTICS & REPORTING =====
+
+model Activity {
+  id            String   @id @default(uuid())
+  type          String   // "contact_created", "interaction_logged", "deal_won", etc.
+  description   String
+  metadata      Json?    // Flexible data storage
+  createdAt     DateTime @default(now())
+  
+  // Relationships
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  contactId     String?
+  contact       Contact? @relation(fields: [contactId], references: [id])
+}
+
+// ===== INTEGRATIONS =====
+
+model Integration {
+  id            String   @id @default(uuid())
+  type          String   // "gmail", "outlook", "linkedin", "calendly", "slack"
+  name          String
+  config        Json     // API keys, settings, etc.
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+}
+
+// ===== TEMPLATES & AUTOMATION =====
+
+model Template {
+  id            String   @id @default(uuid())
+  name          String
+  type          String   // "email", "message", "proposal", "follow_up"
+  content       String
+  variables     Json?    // Template variables
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+}
+
+model Automation {
+  id            String   @id @default(uuid())
+  name          String
+  trigger       String   // "contact_created", "interaction_logged", "deal_stage_changed"
+  action        String   // "send_email", "create_task", "update_stage"
+  config        Json     // Automation configuration
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+} 

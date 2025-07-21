@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Contact {
+  id              String    @id @default(uuid())
+  fullName        String
+  preferredName   String?   // For more casual use
+  email           String?
+  phone           String?
+  linkedInUrl     String?
+  twitterHandle   String?
+  company         String?
+  title           String?
+  location        String?
+  relationship    String?   // e.g. "Mentor", "Peer", "Recruiter"
+  contactSource   String?   // e.g. "UChicago event", "Referred by Jane"
+  tags            String[]  // e.g. ["VC", "Biotech", "Strategy"]
+  personalNotes   String?   // High-level: who they are, your rapport
+  professionalNotes String? // Career-specific insights or goals
+  meetingCadence  String?   // e.g. "Every 3 months"
+  lastContacted   DateTime?
+  nextFollowUp    DateTime?
+  birthday        DateTime?
+  favoriteTopics  String[] // e.g. ["AI", "Neuroscience", "Sailing"]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  interactions    Interaction[]
+  userEvents      UserEvent[]
+  suggestedFollowUps SuggestedFollowUp[]
+}
+
+model Interaction {
+  id            String   @id @default(uuid())
+  contact       Contact  @relation(fields: [contactId], references: [id])
+  contactId     String
+  type          String   // e.g. "email", "call", "coffee", "LinkedIn DM"
+  date          DateTime
+  summary       String   // A short sentence about what you talked about
+  fullNotes     String?  // Detailed log or transcript if needed
+  nextSteps     String?  // Any TODOs or follow-up plan
+  location      String?  // "Zoom", "Chicago", "SF", etc.
+  sentiment     String?  // e.g. "Very positive", "Neutral"
+  sharedBy      String?  // If this person intro'd you to someone else
+  createdAt     DateTime @default(now())
+}
+
+model UserEvent {
+  id          String   @id @default(uuid())
+  title       String
+  date        DateTime
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  notes       String?
+  type        String   @default("meeting") // "meeting", "follow_up", "reminder", "other"
+  location    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SuggestedFollowUp {
+  id              String   @id @default(uuid())
+  contactName     String
+  contactId       String
+  contact         Contact  @relation(fields: [contactId], references: [id])
+  date            DateTime
+  messagePreview  String
+  importanceScore Int      @default(50) // 0-100
+  type            String   @default("follow_up") // "follow_up", "meeting", "check_in"
+  createdAt       DateTime @default(now())
+} 
