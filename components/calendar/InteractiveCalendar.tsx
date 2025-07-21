@@ -9,113 +9,163 @@ import listPlugin from '@fullcalendar/list'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Calendar, Clock, Users } from 'lucide-react'
-import { CalendarEvent, getCalendarEvents, createUserEvent, updateUserEvent, deleteUserEvent } from '@/lib/calendarAPI'
+import { Calendar, Plus, Clock, Users, TrendingUp } from 'lucide-react'
 import { EventModal } from './EventModal'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 
+export interface CalendarEvent {
+  id: string
+  title: string
+  date: Date
+  contactId?: string
+  contactName?: string
+  notes?: string
+  type: 'user_event' | 'suggested_follow_up'
+  location?: string
+  importanceScore?: number
+  messagePreview?: string
+  backgroundColor?: string
+  borderColor?: string
+}
+
 export function InteractiveCalendar() {
-  const [events, setEvents] = useState<CalendarEvent[]>([])
-  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false)
-  const [view, setView] = useState<'dayGridMonth' | 'timeGridWeek' | 'listWeek'>('dayGridMonth')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const calendarRef = useRef<FullCalendar>(null)
 
   const loadEvents = useCallback(async () => {
-    const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-    
-    const fetchedEvents = await getCalendarEvents(startDate, endDate)
-    setEvents(fetchedEvents)
+    try {
+      setIsLoading(true)
+      const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+      const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+
+      const response = await fetch(`/api/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`)
+      if (response.ok) {
+        const fetchedEvents = await response.json()
+        setEvents(fetchedEvents)
+      } else {
+        console.error('Failed to fetch events')
+        setEvents([])
+      }
+    } catch (error) {
+      console.error('Error loading events:', error)
+      setEvents([])
+    } finally {
+      setIsLoading(false)
+    }
   }, [currentDate])
 
   // Load events when component mounts or date changes
   useEffect(() => {
     loadEvents()
-  }, [currentDate])
+  }, [loadEvents])
 
   const handleEventClick = (info: any) => {
     const event = events.find(e => e.id === info.event.id)
     if (event) {
       setSelectedEvent(event)
-      setIsModalOpen(true)
     }
   }
 
-  const handleDateSelect = (selectInfo: any) => {
-    // Open add event modal with pre-filled date
-    setSelectedEvent({
-      id: 'new',
-      title: '',
-      date: selectInfo.start,
-      type: 'user_event',
-    })
-    setIsAddEventModalOpen(true)
+  const handleDateClick = (info: any) => {
+    setSelectedDate(info.date)
+    setShowAddModal(true)
   }
 
-  const handleEventDrop = async (dropInfo: any) => {
-    const event = events.find(e => e.id === dropInfo.event.id)
+  const handleEventDrop = async (info: any) => {
+    const event = events.find(e => e.id === info.event.id)
     if (event && event.type === 'user_event') {
-      const updatedEvent = await updateUserEvent(event.id, {
-        date: dropInfo.event.start,
-      })
-      if (updatedEvent) {
-        setEvents(events.map(e => e.id === event.id ? updatedEvent : e))
+      try {
+        const response = await fetch(`/api/calendar/events/user`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: event.id.replace('user_', ''),
+            date: info.event.start.toISOString(),
+          }),
+        })
+        if (response.ok) {
+          loadEvents() // Reload events
+        }
+      } catch (error) {
+        console.error('Error updating event:', error)
       }
     }
   }
 
-  const handleEventEdit = async (updatedEvent: CalendarEvent) => {
-    if (updatedEvent.type === 'user_event') {
-      const result = await updateUserEvent(updatedEvent.id, {
-        title: updatedEvent.title,
-        date: updatedEvent.date,
-        notes: updatedEvent.notes,
-        location: updatedEvent.location,
+  const handleAddEvent = async (eventData: any) => {
+    try {
+      const response = await fetch('/api/calendar/events/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: eventData.title,
+          date: eventData.date.toISOString(),
+          notes: eventData.notes,
+          type: eventData.type,
+          location: eventData.location,
+        }),
       })
-      if (result) {
-        setEvents(events.map(e => e.id === updatedEvent.id ? result : e))
+      if (response.ok) {
+        loadEvents() // Reload events
+        setShowAddModal(false)
       }
+    } catch (error) {
+      console.error('Error adding event:', error)
     }
-    setIsModalOpen(false)
   }
 
-  const handleEventDelete = async (eventId: string) => {
-    const success = await deleteUserEvent(eventId)
-    if (success) {
-      setEvents(events.filter(e => e.id !== eventId))
+  const handleUpdateEvent = async (eventData: any) => {
+    try {
+      const response = await fetch('/api/calendar/events/user', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: eventData.id.replace('user_', ''),
+          title: eventData.title,
+          date: eventData.date.toISOString(),
+          notes: eventData.notes,
+          type: eventData.type,
+          location: eventData.location,
+        }),
+      })
+      if (response.ok) {
+        loadEvents() // Reload events
+        setSelectedEvent(null)
+      }
+    } catch (error) {
+      console.error('Error updating event:', error)
     }
-    setIsModalOpen(false)
   }
 
-  const handleAddEvent = async (eventData: {
-    title: string
-    date: Date
-    notes?: string
-    location?: string
-  }) => {
-    const newEvent = await createUserEvent(eventData)
-    if (newEvent) {
-      setEvents([...events, newEvent])
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const response = await fetch('/api/calendar/events/user', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: eventId.replace('user_', ''),
+        }),
+      })
+      if (response.ok) {
+        loadEvents() // Reload events
+        setSelectedEvent(null)
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error)
     }
-    setIsAddEventModalOpen(false)
   }
 
-  const handleSendMessage = (contactId: string) => {
-    // This would integrate with your messaging system
-    console.log('Send message to contact:', contactId)
-    // You could open a compose message modal here
-  }
-
-  // Transform events for FullCalendar
   const calendarEvents = events.map(event => ({
     id: event.id,
     title: event.title,
-    start: event.date,
+    date: event.date,
     backgroundColor: event.backgroundColor,
     borderColor: event.borderColor,
     extendedProps: {
@@ -123,92 +173,83 @@ export function InteractiveCalendar() {
       contactId: event.contactId,
       contactName: event.contactName,
       notes: event.notes,
+      location: event.location,
       importanceScore: event.importanceScore,
       messagePreview: event.messagePreview,
-      location: event.location,
-    }
+    },
   }))
 
-  // Calculate stats
-  const today = new Date()
-  const todayEvents = events.filter(event => {
-    const eventDate = new Date(event.date)
-    return eventDate.toDateString() === today.toDateString()
-  })
-
-  const suggestedEvents = events.filter(event => event.type === 'suggested_follow_up')
-  const userEvents = events.filter(event => event.type === 'user_event')
+  const stats = {
+    totalEvents: events.length,
+    userEvents: events.filter(e => e.type === 'user_event').length,
+    suggestedEvents: events.filter(e => e.type === 'suggested_follow_up').length,
+    highPriority: events.filter(e => e.type === 'suggested_follow_up' && (e.importanceScore || 0) >= 75).length,
+  }
 
   return (
     <div className="space-y-6">
-      {/* Calendar Header with Stats */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Calendar</h1>
-          <p className="text-muted-foreground">
-            Manage your meetings and follow-ups
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          {/* Stats */}
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium">{userEvents.length} Your Events</span>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="flex items-center space-x-2 p-4">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Total Events</p>
+              <p className="text-2xl font-bold">{stats.totalEvents}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Users className="h-4 w-4 text-orange-500" />
-              <span className="text-sm font-medium">{suggestedEvents.length} AI Suggestions</span>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center space-x-2 p-4">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Your Events</p>
+              <p className="text-2xl font-bold">{stats.userEvents}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium">{todayEvents.length} Today</span>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center space-x-2 p-4">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">AI Suggestions</p>
+              <p className="text-2xl font-bold">{stats.suggestedEvents}</p>
             </div>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={view === 'dayGridMonth' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('dayGridMonth')}
-            >
-              Month
-            </Button>
-            <Button
-              variant={view === 'timeGridWeek' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('timeGridWeek')}
-            >
-              Week
-            </Button>
-            <Button
-              variant={view === 'listWeek' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('listWeek')}
-            >
-              List
-            </Button>
-          </div>
-
-          {/* Add Event Button */}
-          <Button onClick={() => setIsAddEventModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Event
-          </Button>
-        </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center space-x-2 p-4">
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">High Priority</p>
+              <p className="text-2xl font-bold">{stats.highPriority}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Calendar */}
       <Card>
-        <CardContent className="p-0">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Calendar</span>
+            <Button onClick={() => setShowAddModal(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Event
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="h-[600px]">
             <FullCalendar
               ref={calendarRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-              headerToolbar={false}
-              initialView={view}
+              initialView="dayGridMonth"
+              headerToolbar={{
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+              }}
               editable={true}
               selectable={true}
               selectMirror={true}
@@ -216,28 +257,16 @@ export function InteractiveCalendar() {
               weekends={true}
               events={calendarEvents}
               eventClick={handleEventClick}
-              select={handleDateSelect}
+              dateClick={handleDateClick}
               eventDrop={handleEventDrop}
               height="100%"
-              eventDisplay="block"
-              eventTimeFormat={{
-                hour: '2-digit',
-                minute: '2-digit',
-                meridiem: 'short'
-              }}
-              eventDidMount={(info) => {
-                // Add custom styling for suggested events
-                if (info.event.extendedProps.type === 'suggested_follow_up') {
-                  info.el.classList.add('suggested-event')
-                }
-              }}
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Empty State */}
-      {events.length === 0 && (
+      {events.length === 0 && !isLoading && (
         <Card>
           <CardContent className="text-center py-12">
             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -245,7 +274,7 @@ export function InteractiveCalendar() {
             <p className="text-muted-foreground mb-4">
               No events scheduled. Add a meeting or check your suggested follow-ups.
             </p>
-            <Button onClick={() => setIsAddEventModalOpen(true)}>
+            <Button onClick={() => setShowAddModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Your First Event
             </Button>
@@ -254,116 +283,75 @@ export function InteractiveCalendar() {
       )}
 
       {/* Event Modal */}
-      <EventModal
-        event={selectedEvent}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onEdit={handleEventEdit}
-        onDelete={handleEventDelete}
-        onSendMessage={handleSendMessage}
-      />
-
-      {/* Add Event Modal */}
-      {isAddEventModalOpen && (
-        <AddEventModal
-          isOpen={isAddEventModalOpen}
-          onClose={() => setIsAddEventModalOpen(false)}
-          onAdd={handleAddEvent}
-          initialDate={selectedEvent?.date}
+      {selectedEvent && (
+        <EventModal
+          event={selectedEvent}
+          isOpen={!!selectedEvent}
+          onClose={() => setSelectedEvent(null)}
+          onEdit={handleUpdateEvent}
+          onDelete={handleDeleteEvent}
         />
       )}
-    </div>
-  )
-}
 
-// Add Event Modal Component
-interface AddEventModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onAdd: (eventData: { title: string; date: Date; notes?: string; location?: string }) => void
-  initialDate?: Date
-}
-
-function AddEventModal({ isOpen, onClose, onAdd, initialDate }: AddEventModalProps) {
-  const [formData, setFormData] = useState({
-    title: '',
-    date: initialDate ? new Date(initialDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-    notes: '',
-    location: '',
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onAdd({
-      title: formData.title,
-      date: new Date(formData.date),
-      notes: formData.notes || undefined,
-      location: formData.location || undefined,
-    })
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Add New Event</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="date">Date & Time</Label>
-              <Input
-                id="date"
-                type="datetime-local"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Zoom, Coffee shop, etc."
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="flex space-x-2">
-              <Button type="submit" className="flex-1">
-                Add Event
-              </Button>
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      {/* Add Event Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Add New Event</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              const formData = new FormData(e.currentTarget)
+              handleAddEvent({
+                title: formData.get('title') as string,
+                date: selectedDate || new Date(),
+                notes: formData.get('notes') as string,
+                type: formData.get('type') as string,
+                location: formData.get('location') as string,
+              })
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input id="title" name="title" required />
+                </div>
+                <div>
+                  <Label htmlFor="date">Date</Label>
+                  <Input 
+                    id="date" 
+                    name="date" 
+                    type="datetime-local" 
+                    defaultValue={selectedDate?.toISOString().slice(0, 16)}
+                    required 
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="type">Type</Label>
+                  <select id="type" name="type" className="w-full p-2 border rounded">
+                    <option value="meeting">Meeting</option>
+                    <option value="follow_up">Follow Up</option>
+                    <option value="reminder">Reminder</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="location">Location (Optional)</Label>
+                  <Input id="location" name="location" />
+                </div>
+                <div>
+                  <Label htmlFor="notes">Notes (Optional)</Label>
+                  <Textarea id="notes" name="notes" />
+                </div>
+                <div className="flex space-x-2">
+                  <Button type="submit" className="flex-1">Add Event</Button>
+                  <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
