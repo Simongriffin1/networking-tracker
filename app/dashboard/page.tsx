@@ -1,6 +1,7 @@
 import { FollowUpReminder } from '@/components/follow-up-reminder'
 import { RecentInteractions } from '@/components/recent-interactions'
 import { ContactStats } from '@/components/contact-stats'
+import { FollowUpSuggestions } from '@/components/followup-suggestions'
 
 export default function DashboardPage() {
   return (
@@ -20,6 +21,8 @@ export default function DashboardPage() {
         <FollowUpReminder />
         <RecentInteractions />
       </div>
+
+      <FollowUpSuggestions />
     </div>
   )
 } 
