@@ -80,8 +80,24 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = params
+
+    // Delete related records first to handle foreign key constraints
+    await prisma.interaction.deleteMany({
+      where: { contactId: id }
+    })
+
+    await prisma.userEvent.deleteMany({
+      where: { contactId: id }
+    })
+
+    await prisma.suggestedFollowUp.deleteMany({
+      where: { contactId: id }
+    })
+
+    // Now delete the contact
     await prisma.contact.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'Contact deleted successfully' })

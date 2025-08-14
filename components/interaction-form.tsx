@@ -49,9 +49,27 @@ export function InteractionForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would submit to your API
-    console.log('Submitting interaction:', formData)
-    router.push(`/contacts/${formData.contactId}`)
+    
+    try {
+      const response = await fetch('/api/interactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create interaction')
+      }
+
+      const newInteraction = await response.json()
+      console.log('Interaction created successfully:', newInteraction)
+      router.push(`/contacts/${formData.contactId}`)
+    } catch (err) {
+      console.error('Error creating interaction:', err)
+      alert('Failed to create interaction')
+    }
   }
 
   useEffect(() => {

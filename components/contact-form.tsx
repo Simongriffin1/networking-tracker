@@ -75,9 +75,27 @@ export function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Here you would submit to your API
-    console.log('Submitting contact:', formData)
-    router.push('/contacts')
+    
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create contact')
+      }
+
+      const newContact = await response.json()
+      console.log('Contact created successfully:', newContact)
+      router.push('/contacts')
+    } catch (err) {
+      console.error('Error creating contact:', err)
+      alert('Failed to create contact')
+    }
   }
 
   return (
