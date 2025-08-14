@@ -3,25 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Building, 
-  Calendar, 
-  ExternalLink,
-  Edit,
-  Trash2,
-  Save,
-  X
-} from 'lucide-react'
-import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
+import { Edit, Trash2, Save, X } from 'lucide-react'
 
 interface Contact {
   id: string
@@ -29,21 +14,11 @@ interface Contact {
   preferredName?: string
   email?: string
   phone?: string
-  linkedInUrl?: string
-  twitterHandle?: string
   company?: string
   title?: string
   location?: string
-  relationship?: string
-  contactSource?: string
-  tags: string[]
   personalNotes?: string
-  professionalNotes?: string
-  meetingCadence?: string
-  lastContacted?: string
-  nextFollowUp?: string
-  birthday?: string
-  favoriteTopics: string[]
+  tags: string[]
 }
 
 interface ContactProfileProps {
@@ -54,7 +29,6 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
   const router = useRouter()
   const [contact, setContact] = useState<Contact | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [editData, setEditData] = useState<Contact | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -63,24 +37,23 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
   useEffect(() => {
     const fetchContact = async () => {
       try {
+        console.log('Fetching contact:', contactId)
         const response = await fetch(`/api/contacts/${contactId}`)
+        console.log('Response status:', response.status)
+        
         if (!response.ok) {
-          throw new Error('Failed to fetch contact')
+          throw new Error(`Failed to fetch contact: ${response.status}`)
         }
+        
         const data = await response.json()
+        console.log('API data received:', data)
         
-        // Format dates for display
-        const formattedData = {
-          ...data,
-          lastContacted: data.lastContacted ? new Date(data.lastContacted).toLocaleDateString() : null,
-          nextFollowUp: data.nextFollowUp ? new Date(data.nextFollowUp).toLocaleDateString() : null,
-          birthday: data.birthday ? new Date(data.birthday).toLocaleDateString() : null,
-        }
-        
-        setContact(formattedData)
-        setEditData(formattedData)
+        setContact(data)
+        setEditData(data)
         setLoading(false)
+        console.log('State updated, loading set to false')
       } catch (err) {
+        console.error('Error fetching contact:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch contact')
         setLoading(false)
       }
@@ -103,19 +76,12 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
     if (!editData) return
 
     try {
-      // Convert date strings back to ISO format for the API
-      const dataToSend = {
-        ...editData,
-        nextFollowUp: editData.nextFollowUp ? new Date(editData.nextFollowUp).toISOString() : null,
-        birthday: editData.birthday ? new Date(editData.birthday).toISOString() : null,
-      }
-
       const response = await fetch(`/api/contacts/${contactId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify(editData),
       })
 
       if (!response.ok) {
@@ -123,17 +89,7 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
       }
 
       const updatedContact = await response.json()
-      
-      // Format dates for display
-      const formattedContact = {
-        ...updatedContact,
-        lastContacted: updatedContact.lastContacted ? new Date(updatedContact.lastContacted).toLocaleDateString() : null,
-        nextFollowUp: updatedContact.nextFollowUp ? new Date(updatedContact.nextFollowUp).toLocaleDateString() : null,
-        birthday: updatedContact.birthday ? new Date(updatedContact.birthday).toLocaleDateString() : null,
-      }
-      
-      setContact(formattedContact)
-      setEditData(formattedContact)
+      setContact(updatedContact)
       setIsEditing(false)
       setError(null)
     } catch (err) {
@@ -167,11 +123,10 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
     }
   }
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase()
-  }
+  console.log('Component render state:', { loading, error, contact, isEditing })
 
   if (loading) {
+    console.log('Rendering loading state')
     return (
       <Card>
         <CardContent className="p-6">
@@ -185,6 +140,7 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
   }
 
   if (error || !contact) {
+    console.log('Rendering error state:', { error, contact })
     return (
       <Card>
         <CardContent className="p-6">
@@ -199,299 +155,142 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
     )
   }
 
+  console.log('Rendering contact profile:', contact)
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16">
-                <AvatarFallback className="text-lg">
-                  {getInitials(contact.fullName)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={editData?.fullName || ''}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      className="text-2xl font-bold"
-                    />
-                    {editData?.preferredName && (
-                      <Input
-                        value={editData.preferredName}
-                        onChange={(e) => handleInputChange('preferredName', e.target.value)}
-                        placeholder="Preferred name"
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <CardTitle className="text-2xl">{contact.fullName}</CardTitle>
-                    {contact.preferredName && contact.preferredName !== contact.fullName && (
-                      <p className="text-muted-foreground">({contact.preferredName})</p>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="flex space-x-2">
-              {isEditing ? (
-                <>
-                  <Button onClick={handleSave} size="sm">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
-                  <Button onClick={handleCancelEdit} variant="outline" size="sm">
-                    <X className="h-4 w-4 mr-2" />
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button onClick={handleEdit} variant="outline" size="sm">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button onClick={handleDelete} variant="outline" size="sm" className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center space-x-2">
-              <Building className="h-4 w-4 text-muted-foreground" />
-              <div>
-                {isEditing ? (
-                  <div className="space-y-1">
-                    <Input
-                      value={editData?.company || ''}
-                      onChange={(e) => handleInputChange('company', e.target.value)}
-                      placeholder="Company"
-                    />
-                    <Input
-                      value={editData?.title || ''}
-                      onChange={(e) => handleInputChange('title', e.target.value)}
-                      placeholder="Title"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <p className="font-medium">{contact.company}</p>
-                    <p className="text-sm text-muted-foreground">{contact.title}</p>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              {isEditing ? (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            {isEditing ? (
+              <div className="space-y-2">
                 <Input
-                  value={editData?.location || ''}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="Location"
+                  value={editData?.fullName || ''}
+                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                  className="text-2xl font-bold"
                 />
-              ) : (
-                <span>{contact.location}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {contact.email && (
-              <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                {isEditing ? (
+                {editData?.preferredName && (
                   <Input
-                    value={editData?.email || ''}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    type="email"
-                    placeholder="Email"
+                    value={editData.preferredName}
+                    onChange={(e) => handleInputChange('preferredName', e.target.value)}
+                    placeholder="Preferred name"
                   />
-                ) : (
-                  <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
-                    {contact.email}
-                  </a>
                 )}
               </div>
-            )}
-            {contact.phone && (
-              <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                {isEditing ? (
-                  <Input
-                    value={editData?.phone || ''}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
-                    type="tel"
-                    placeholder="Phone"
-                  />
-                ) : (
-                  <a href={`tel:${contact.phone}`} className="text-blue-600 hover:underline">
-                    {contact.phone}
-                  </a>
+            ) : (
+              <>
+                <CardTitle className="text-2xl">{contact.fullName}</CardTitle>
+                {contact.preferredName && contact.preferredName !== contact.fullName && (
+                  <p className="text-muted-foreground">({contact.preferredName})</p>
                 )}
-              </div>
+              </>
             )}
           </div>
-
-          <div className="flex items-center space-x-4">
-            {contact.linkedInUrl && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={contact.linkedInUrl} target="_blank">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  LinkedIn
-                </Link>
-              </Button>
+          <div className="flex space-x-2">
+            {isEditing ? (
+              <>
+                <Button onClick={handleSave} size="sm">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+                <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={handleEdit} variant="outline" size="sm">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button onClick={handleDelete} variant="outline" size="sm" className="text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </>
             )}
-            {contact.twitterHandle && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`https://twitter.com/${contact.twitterHandle.replace('@', '')}`} target="_blank">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Twitter
-                </Link>
-              </Button>
-            )}
           </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Tags</p>
-            <div className="flex flex-wrap gap-2">
-              {contact.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Favorite Topics</p>
-            <div className="flex flex-wrap gap-2">
-              {contact.favoriteTopics.map((topic) => (
-                <Badge key={topic} variant="outline">
-                  {topic}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {contact.personalNotes && (
-            <div>
-              <h4 className="font-medium mb-2">Personal Notes</h4>
-              {isEditing ? (
-                <Textarea
-                  value={editData?.personalNotes || ''}
-                  onChange={(e) => handleInputChange('personalNotes', e.target.value)}
-                  rows={3}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">{contact.personalNotes}</p>
-              )}
-            </div>
-          )}
-          {contact.professionalNotes && (
-            <div>
-              <h4 className="font-medium mb-2">Professional Notes</h4>
-              {isEditing ? (
-                <Textarea
-                  value={editData?.professionalNotes || ''}
-                  onChange={(e) => handleInputChange('professionalNotes', e.target.value)}
-                  rows={3}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">{contact.professionalNotes}</p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Follow-up Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium">Meeting Cadence</p>
-              {isEditing ? (
-                <Input
-                  value={editData?.meetingCadence || ''}
-                  onChange={(e) => handleInputChange('meetingCadence', e.target.value)}
-                  placeholder="Every 3 months"
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">{contact.meetingCadence}</p>
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-medium">Next Follow-up</p>
-              {isEditing ? (
-                <Input
-                  value={editData?.nextFollowUp || ''}
-                  onChange={(e) => handleInputChange('nextFollowUp', e.target.value)}
-                  type="date"
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">{contact.nextFollowUp}</p>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium">Last Contacted</p>
-              <p className="text-sm text-muted-foreground">{contact.lastContacted}</p>
-            </div>
-            {contact.birthday && (
-              <div>
-                <p className="text-sm font-medium">Birthday</p>
-                {isEditing ? (
-                  <Input
-                    value={editData?.birthday || ''}
-                    onChange={(e) => handleInputChange('birthday', e.target.value)}
-                    type="date"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">{contact.birthday}</p>
-                )}
-              </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-medium">Company</p>
+            {isEditing ? (
+              <Input
+                value={editData?.company || ''}
+                onChange={(e) => handleInputChange('company', e.target.value)}
+                placeholder="Company"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{contact.company}</p>
             )}
           </div>
           <div>
-            <p className="text-sm font-medium">How we met</p>
+            <p className="text-sm font-medium">Title</p>
             {isEditing ? (
               <Input
-                value={editData?.contactSource || ''}
-                onChange={(e) => handleInputChange('contactSource', e.target.value)}
-                placeholder="How you met"
+                value={editData?.title || ''}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                placeholder="Title"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">{contact.contactSource}</p>
+              <p className="text-sm text-muted-foreground">{contact.title}</p>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="p-4">
-            <p className="text-red-600 text-sm">{error}</p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-medium">Email</p>
+            {isEditing ? (
+              <Input
+                value={editData?.email || ''}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                type="email"
+                placeholder="Email"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{contact.email}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-medium">Phone</p>
+            {isEditing ? (
+              <Input
+                value={editData?.phone || ''}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                type="tel"
+                placeholder="Phone"
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{contact.phone}</p>
+            )}
+          </div>
+        </div>
+
+        {contact.personalNotes && (
+          <div>
+            <p className="text-sm font-medium">Personal Notes</p>
+            {isEditing ? (
+              <Textarea
+                value={editData?.personalNotes || ''}
+                onChange={(e) => handleInputChange('personalNotes', e.target.value)}
+                rows={3}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">{contact.personalNotes}</p>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div className="text-red-600 text-sm">
+            <p>Error: {error}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 } 
