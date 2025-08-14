@@ -68,8 +68,17 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
           throw new Error('Failed to fetch contact')
         }
         const data = await response.json()
-        setContact(data)
-        setEditData(data)
+        
+        // Format dates for display
+        const formattedData = {
+          ...data,
+          lastContacted: data.lastContacted ? new Date(data.lastContacted).toLocaleDateString() : null,
+          nextFollowUp: data.nextFollowUp ? new Date(data.nextFollowUp).toLocaleDateString() : null,
+          birthday: data.birthday ? new Date(data.birthday).toLocaleDateString() : null,
+        }
+        
+        setContact(formattedData)
+        setEditData(formattedData)
         setLoading(false)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch contact')
@@ -94,12 +103,19 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
     if (!editData) return
 
     try {
+      // Convert date strings back to ISO format for the API
+      const dataToSend = {
+        ...editData,
+        nextFollowUp: editData.nextFollowUp ? new Date(editData.nextFollowUp).toISOString() : null,
+        birthday: editData.birthday ? new Date(editData.birthday).toISOString() : null,
+      }
+
       const response = await fetch(`/api/contacts/${contactId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editData),
+        body: JSON.stringify(dataToSend),
       })
 
       if (!response.ok) {
@@ -107,7 +123,17 @@ export function ContactProfile({ contactId }: ContactProfileProps) {
       }
 
       const updatedContact = await response.json()
-      setContact(updatedContact)
+      
+      // Format dates for display
+      const formattedContact = {
+        ...updatedContact,
+        lastContacted: updatedContact.lastContacted ? new Date(updatedContact.lastContacted).toLocaleDateString() : null,
+        nextFollowUp: updatedContact.nextFollowUp ? new Date(updatedContact.nextFollowUp).toLocaleDateString() : null,
+        birthday: updatedContact.birthday ? new Date(updatedContact.birthday).toLocaleDateString() : null,
+      }
+      
+      setContact(formattedContact)
+      setEditData(formattedContact)
       setIsEditing(false)
       setError(null)
     } catch (err) {
