@@ -13,7 +13,7 @@ export async function syncEmailInteractions(emails: EmailInteraction[]) {
   try {
     console.log('🔥 EMAIL SYNC: Starting email sync for', emails.length, 'emails')
     
-    const syncedCount = 0
+    let syncedCount = 0
     
     for (const email of emails) {
       // Try to find contact by email
